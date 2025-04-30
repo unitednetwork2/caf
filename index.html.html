@@ -1,41 +1,106 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>CAF Form</title>
+  <title>ISP CAF Form</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f3f3f3;
+      padding: 20px;
+    }
+    form {
+      background: #fff;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      max-width: 500px;
+      margin: auto;
+    }
+    label {
+      display: block;
+      margin-bottom: 10px;
+    }
+    input, button {
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 15px;
+    }
+    canvas {
+      display: none;
+    }
+  </style>
 </head>
 <body>
-  <h2>Customer Application Form</h2>
-  <form id="cafForm">
-    <label>Name: <input type="text" name="name" required></label><br><br>
-    <label>Mobile: <input type="text" name="mobile" required></label><br><br>
-    <label>Location: <input type="text" name="location" required></label><br><br>
-    <button type="submit">Submit</button>
-  </form>
 
-  <div id="downloadLink"></div>
+<h2 style="text-align:center;">UBI ISP - Customer Application Form</h2>
 
-  <script>
-    const form = document.getElementById('cafForm');
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
+<form id="cafForm">
+  <label>Name: <input type="text" name="name" required></label>
+  <label>Mobile: <input type="text" name="mobile" required></label>
+  <label>Location: <input type="text" name="location" required></label>
+  
+  <label>Upload Photo: <input type="file" id="photo" accept="image/*" required></label>
+  <label>Upload ID Proof: <input type="file" id="idProof" accept="image/*,application/pdf" required></label>
+  
+  <button type="submit">Generate PDF</button>
+</form>
 
-      const formData = new FormData(form);
-      const data = Object.fromEntries(formData.entries());
+<div id="pdfLink" style="text-align:center;"></div>
 
-      const response = await fetch('YOUR_GOOGLE_SCRIPT_WEB_APP_URL', {
-        method: 'POST',
-        body: JSON.stringify(data),
-        headers: { 'Content-Type': 'application/json' }
-      });
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+  const form = document.getElementById('cafForm');
+  form.addEventListener('submit', async function(e) {
+    e.preventDefault();
 
-      const result = await response.json();
-      if (result.status === 'success') {
-        document.getElementById('downloadLink').innerHTML =
-          `<a href="${result.pdfUrl}" target="_blank">Download Your PDF</a>`;
-      } else {
-        alert("Error: " + result.message);
-      }
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+
+    const name = form.name.value;
+    const mobile = form.mobile.value;
+    const location = form.location.value;
+
+    doc.setFontSize(14);
+    doc.text("UBI ISP - Customer Application Form", 20, 20);
+    doc.text(`Name: ${name}`, 20, 40);
+    doc.text(`Mobile: ${mobile}`, 20, 50);
+    doc.text(`Location: ${location}`, 20, 60);
+
+    // Handle photo
+    const photoFile = document.getElementById('photo').files[0];
+    const idFile = document.getElementById('idProof').files[0];
+
+    if (photoFile && photoFile.type.startsWith('image/')) {
+      const photoData = await toBase64(photoFile);
+      doc.text("Photo:", 20, 70);
+      doc.addImage(photoData, 'JPEG', 20, 75, 40, 40);
+    }
+
+    // Handle ID proof (image only; PDF will be skipped)
+    if (idFile && idFile.type.startsWith('image/')) {
+      const idData = await toBase64(idFile);
+      doc.text("ID Proof:", 20, 120);
+      doc.addImage(idData, 'JPEG', 20, 125, 60, 40);
+    } else if (idFile && idFile.type === 'application/pdf') {
+      doc.text("ID Proof (uploaded as PDF - not shown):", 20, 120);
+    }
+
+    const pdfBlob = doc.output('blob');
+    const url = URL.createObjectURL(pdfBlob);
+
+    const linkDiv = document.getElementById('pdfLink');
+    linkDiv.innerHTML = `<br><a href="${url}" download="CAF_Form_${mobile}.pdf">📄 Download CAF PDF</a>`;
+  });
+
+  function toBase64(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = e => reject(e);
+      reader.readAsDataURL(file);
     });
-  </script>
+  }
+</script>
+
 </body>
 </html>

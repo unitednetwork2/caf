@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>ISP CAF Form</title>
+  <title>UBI ISP CAF Form</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -12,21 +12,18 @@
       background: #fff;
       padding: 20px;
       border-radius: 8px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.1);
-      max-width: 500px;
+      max-width: 600px;
       margin: auto;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
     }
     label {
       display: block;
       margin-bottom: 10px;
     }
-    input, button {
+    input, select, button {
       width: 100%;
       padding: 10px;
       margin-bottom: 15px;
-    }
-    canvas {
-      display: none;
     }
   </style>
 </head>
@@ -35,20 +32,35 @@
 <h2 style="text-align:center;">UBI ISP - Customer Application Form</h2>
 
 <form id="cafForm">
+  <label>CAF Form No. <input type="text" id="cafNo" name="cafNo" readonly></label>
   <label>Name: <input type="text" name="name" required></label>
   <label>Mobile: <input type="text" name="mobile" required></label>
-  <label>Location: <input type="text" name="location" required></label>
-  
+  <label>Address: <input type="text" name="address" required></label>
+  <label>Location/Area: <input type="text" name="location" required></label>
+
+  <label>Internet Plan:
+    <select name="plan" required>
+      <option value="">--Select Plan--</option>
+      <option>50 Mbps - ₹499</option>
+      <option>100 Mbps - ₹699</option>
+      <option>200 Mbps - ₹999</option>
+    </select>
+  </label>
+
   <label>Upload Photo: <input type="file" id="photo" accept="image/*" required></label>
   <label>Upload ID Proof: <input type="file" id="idProof" accept="image/*,application/pdf" required></label>
-  
-  <button type="submit">Generate PDF</button>
+
+  <label><input type="checkbox" required> I accept the terms and conditions of UBI ISP Policy</label>
+
+  <button type="submit">Generate CAF PDF</button>
 </form>
 
 <div id="pdfLink" style="text-align:center;"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
+  document.getElementById('cafNo').value = 'CAF-' + Date.now(); // Auto-generate CAF number
+
   const form = document.getElementById('cafForm');
   form.addEventListener('submit', async function(e) {
     e.preventDefault();
@@ -56,15 +68,23 @@
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
 
+    const cafNo = form.cafNo.value;
     const name = form.name.value;
     const mobile = form.mobile.value;
+    const address = form.address.value;
     const location = form.location.value;
+    const plan = form.plan.value;
 
     doc.setFontSize(14);
     doc.text("UBI ISP - Customer Application Form", 20, 20);
+    doc.setFontSize(12);
+    doc.text(`CAF No: ${cafNo}`, 20, 30);
     doc.text(`Name: ${name}`, 20, 40);
     doc.text(`Mobile: ${mobile}`, 20, 50);
-    doc.text(`Location: ${location}`, 20, 60);
+    doc.text(`Address: ${address}`, 20, 60);
+    doc.text(`Location: ${location}`, 20, 70);
+    doc.text(`Internet Plan: ${plan}`, 20, 80);
+    doc.text(`Policy Accepted: Yes`, 20, 90);
 
     // Handle photo
     const photoFile = document.getElementById('photo').files[0];
@@ -72,24 +92,24 @@
 
     if (photoFile && photoFile.type.startsWith('image/')) {
       const photoData = await toBase64(photoFile);
-      doc.text("Photo:", 20, 70);
-      doc.addImage(photoData, 'JPEG', 20, 75, 40, 40);
+      doc.text("Photo:", 20, 100);
+      doc.addImage(photoData, 'JPEG', 20, 105, 40, 40);
     }
 
-    // Handle ID proof (image only; PDF will be skipped)
     if (idFile && idFile.type.startsWith('image/')) {
       const idData = await toBase64(idFile);
-      doc.text("ID Proof:", 20, 120);
-      doc.addImage(idData, 'JPEG', 20, 125, 60, 40);
+      doc.text("ID Proof:", 70, 100);
+      doc.addImage(idData, 'JPEG', 70, 105, 60, 40);
     } else if (idFile && idFile.type === 'application/pdf') {
-      doc.text("ID Proof (uploaded as PDF - not shown):", 20, 120);
+      doc.text("ID Proof (PDF uploaded - not shown):", 70, 100);
     }
 
     const pdfBlob = doc.output('blob');
     const url = URL.createObjectURL(pdfBlob);
 
-    const linkDiv = document.getElementById('pdfLink');
-    linkDiv.innerHTML = `<br><a href="${url}" download="CAF_Form_${mobile}.pdf">📄 Download CAF PDF</a>`;
+    document.getElementById('pdfLink').innerHTML = `
+      <br><a href="${url}" download="CAF_${mobile}.pdf">📄 Download CAF PDF</a>
+    `;
   });
 
   function toBase64(file) {
